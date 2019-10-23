@@ -1,0 +1,101 @@
+#' @title Add R script into a document object
+#'
+#' @description Add R script into a document object
+#'
+#' @param doc document object
+#' @param file R script file. Not used if text or
+#' rscript is provided.
+#' @param text character vector. The text to parse.
+#' Not used if file or rscript is provided.
+#' @param rscript an object of class \code{RScript}.
+#' Not used if file or text is provided.
+#' @param ... further arguments passed to other methods
+#' @details
+#' You have to one of the following argument: file or text or rscript.
+#' @return a document object
+#' @export
+#' @seealso \code{\link{docx}}, \code{\link{pptx}}
+addRScript = function(doc, rscript, file, text, ... ){
+
+  if( missing( file ) && missing( text ) && missing( rscript ) )
+    stop("need a rscript or file or text argument.")
+
+  UseMethod("addRScript")
+}
+
+
+
+#' @param par.properties paragraph formatting properties of the
+#' paragraphs that contain rscript. An object of class \code{\link{parProperties}}
+#' @param bookmark a character value ; id of the Word bookmark to
+#' replace by the script. optional.
+#' @examples
+#' if( check_valid_java_version() ){
+#' \donttest{
+#' # docx example -----------
+#' doc.filename = "ex_rscript.docx"
+#' doc <- docx()
+#' doc <- addRScript(doc, text = "x = rnorm(100)" )
+#' writeDoc( doc, file = doc.filename )
+#' }
+#' }
+#' @rdname addRScript
+#' @export
+addRScript.docx = function(doc, rscript, file, text, bookmark, par.properties = parProperties(), ... ) {
+
+	if( !missing ( file ) ){
+		rscript = RScript( file = file, ... )
+	} else if( !missing ( text ) ){
+		rscript = RScript( text = text, ... )
+	}
+	.jcall( rscript$jobj, "V", "setDOCXReference", doc$obj )
+
+	args = list( obj = doc$obj,
+			returnSig = "V", method = "add",
+			rscript$jobj,
+			.jParProperties(par.properties)
+			)
+
+	if( !missing( bookmark ) ) args[[length(args) +1 ]] = bookmark
+
+	do.call( .jcall, args )
+
+	doc
+}
+
+
+
+#' @param append boolean default to FALSE. If TRUE, paragraphs will be
+#' appened in the current shape instead of beeing sent into a new shape.
+#' Paragraphs can only be appended on shape containing paragraphs (i.e. you
+#' can not add paragraphs after a FlexTable).
+#' @examples
+#' \donttest{
+#' if( check_valid_java_version() ){
+#' # pptx example -----------
+#' doc.filename = "ex_rscript.pptx"
+#' doc <- pptx()
+#' doc <- addSlide(doc, "Title and Content")
+#' doc <- addRScript(doc, text = "x = rnorm(100)" )
+#' writeDoc( doc, file = doc.filename )
+#' }
+#' }
+#' @export
+#' @rdname addRScript
+addRScript.pptx = function(doc, rscript, file, text, append = FALSE, ... ) {
+
+  if( !missing ( file ) ){
+    rscript = RScript( file = file, ... )
+  } else if( !missing ( text ) ){
+    rscript = RScript( text = text, ... )
+  }
+  if( !append )
+    out = .jcall( doc$current_slide, "I", "add", rscript$jobj )
+  else out = .jcall( doc$current_slide, "I", "append", rscript$jobj )
+  if( isSlideError( out ) ){
+    stop( getSlideErrorString( out , "RScript") )
+  }
+  doc
+}
+
+

@@ -1,0 +1,155 @@
+#' @title Create a Footnote
+#'
+#' @description
+#' A footnote is a a set of paragraphs placed at the bottom of a page if
+#' document object is a \code{\link{docx}} object.
+#'
+#' If in a \code{docx} object, footnote will be flagged by a number immediately
+#' following the portion of the text the note is in reference to.
+#'
+#' @param index.text.properties \code{\link{textProperties}} to apply to note
+#' index symbol (only for \code{docx} object).
+#' @return an object of class \code{\link{Footnote}}.
+#' @examples
+#' \donttest{
+#' if( check_valid_java_version() ){
+#'
+#' ## docx example
+#' doc = docx( )
+#'
+#' par1 = pot("About this reference", textBold( ) )
+#' par2 = pot("Omni ab coalitos pro malivolus obsecrans graviter
+#' cum perquisitor perquisitor pericula saepeque inmunibus coalitos ut.",
+#' 	textItalic(font.size = 8) )
+#'
+#' Footnote1 = Footnote( )
+#' Footnote1 = addParagraph( Footnote1, set_of_paragraphs( par1, par2 ),
+#' 	parProperties(text.align = "justify"))
+#' Footnote1 = addParagraph( Footnote1,
+#' 	set_of_paragraphs( "list item 1", "list item 2" ),
+#' 	parProperties(text.align = "left", list.style = "ordered"))
+#' an_rscript = RScript( par.properties = parProperties(shading.color = "gray90"),
+#' 	text = "ls()
+#' x = rnorm(10)" )
+#' Footnote1 = addParagraph( Footnote1, an_rscript,
+#' 	parProperties(text.align = "left"))
+#'
+#'
+#' Footnote2 = Footnote(  )
+#' Footnote2 = addParagraph( Footnote2, pot("This is another reference" ),
+#' 	par.properties = parProperties(text.align = "center"))
+#'
+#' doc = addTitle( doc, "Title example 1", level = 1 )
+#'
+#' pot1 = "Hae duae provinciae " + pot("bello",
+#' 	footnote = Footnote1 ) + " quondam piratico catervis mixtae
+#' praedonum a Servilio pro consule missae sub
+#' iugum factae sunt vectigales. et hae quidem regiones velut in prominenti
+#' lingua positae ob orbe eoo monte Amano disparantur."
+#'
+#' pot2 = pot("Latius iam disseminata licentia onerosus bonis Caesar
+#' post haec adhibens modum orientis latera cuncta vexabat nec honoratis
+#' nec urbium primatibus nec plebeiis." ) + pot(" Here is another note.",
+#'   footnote = Footnote2)
+#'
+#'
+#' # Add my.pars into the document doc
+#' doc = addParagraph(doc, set_of_paragraphs( pot1, pot2 ) )
+#'
+#' docx.file = "footnote.docx"
+#'
+#' writeDoc( doc, file = docx.file )
+#' }
+#' }
+#' @seealso \code{\link{docx}}, \code{\link{pot}}
+#' @export
+Footnote = function( index.text.properties = textProperties(vertical.align = "superscript") ) {
+
+	if( !inherits( index.text.properties, "textProperties" ) ){
+		stop("argument index.text.properties is not a textProperties object." )
+	}
+
+	out = list( values = list(), text.properties = index.text.properties )
+	class( out ) = "Footnote"
+
+	out
+}
+
+
+#' @title Insert a paragraph into a Footnote object
+#'
+#' @description
+#' Insert paragraph(s) of text into a \code{Footnote}. To create a \code{\link{Footnote}} made of
+#' several paragraphs with different \code{\link{parProperties}}, add sequentially
+#' paragraphs with their associated \code{parProperties} objects with this function.
+#'
+#' @param doc \code{\link{Footnote}} object where to add paragraphs.
+#' @param value text to add to the document as paragraphs:
+#' an object of class \code{\link{pot}} or \code{\link{set_of_paragraphs}}
+#' or a character vector.
+#' @param par.properties \code{\link{parProperties}} to apply to paragraphs.
+#' @param ... further arguments, not used.
+#' @return an object of class \code{\link{Footnote}}.
+#' @seealso \code{\link{Footnote}}, \code{\link{parProperties}}, \code{\link{pot}}
+#' , \code{\link{set_of_paragraphs}}
+#' @export
+addParagraph.Footnote = function( doc, value, par.properties = parProperties(), ... ) {
+	if( missing( value ) ){
+		stop("argument value is missing." )
+	} else if( inherits( value, "character" ) ){
+		value = gsub("(\\n|\\r)", "", value )
+		x = lapply( value, function(x) pot(value = x) )
+		value = do.call( "set_of_paragraphs", x )
+	}
+
+	if( inherits( value, "pot" ) ){
+		value = set_of_paragraphs( value )
+	}
+
+	if( !inherits(value, "set_of_paragraphs") )
+		stop("value must be an object of class pot, set_of_paragraphs or a character vector.")
+
+	if( !inherits( par.properties, "parProperties" ) ){
+		stop("argument par.properties is not a parProperties object." )
+	}
+	newid = length(doc$values) + 1
+	doc$values[[newid]] = list( value = value , par.properties = par.properties )
+
+	doc
+}
+
+
+.jFootnote = function( object ){
+	if( !missing( object ) && !inherits( object, "Footnote" ) ){
+		stop("argument 'object' must be an object of class 'Footnote'")
+	}
+	footnote = .jnew( class.Footnote, .jTextProperties(object$text.properties) )
+	values = object$values
+
+	for( index in seq_len(length( values )) ){
+
+		if( inherits( values[[index]]$value , "RScript") ){
+			.jcall( footnote, "V", "addParagraph" , values[[index]]$value$jobj )
+		} else {
+			parset = .jset_of_paragraphs( values[[index]]$value, values[[index]]$par.properties )
+			.jcall( footnote, "V", "addParagraph" , parset )
+		}
+
+	}
+	footnote
+}
+
+
+
+#' @title print a Footnote
+#'
+#' @description print a Footnote
+#'
+#' @param x a \code{\link{Footnote}} object
+#' @param ... further arguments, not used.
+#' @export
+print.Footnote = function (x, ...){
+	for(i in seq_along(x$values)){
+		print(x$value[[i]]$value)
+	}
+}

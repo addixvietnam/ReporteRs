@@ -1,0 +1,15 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^todo\.md$
+^appveyor\.yml$
+^\.travis\.yml$
+^revdep$
+^README\.Rmd$
+^docs$
+_pkgdown\.yml
+^vignettes$
+^_pkgdown\.yml$
+^ISSUE_TEMPLATE\.md$
+^cran-comments\.md$
+^revdep$
+^tests$
